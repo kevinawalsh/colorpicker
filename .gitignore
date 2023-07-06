@@ -2,3 +2,4 @@
 *.class
 manifest.md
 com/
+!src/com/

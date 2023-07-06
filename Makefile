@@ -1,6 +1,6 @@
 
 DATE:=$(shell date)
-VERSION:=1.4
+VERSION:=1.5
 
 .PHONY: all
 all: jar src-jar
