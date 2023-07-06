@@ -45,7 +45,7 @@ import javax.swing.event.*;
  * <P>To listen to opacity changes to this panel, use a <code>PropertyChangeListener</code> listening
  * for changes to the <code>OPACITY_PROPERTY</code>.
  * 
- * @version 1.3
+ * @version 1.4
  * @author Jeremy Wood
  * @author Kevin Walsh
  */
@@ -794,6 +794,29 @@ public class ColorPicker extends JPanel {
 				scaleGreen(green.getIntValue()),
 				scaleBlue(blue.getIntValue())
 		};
+	}
+
+	/** @return the current unscaled RGB coordinates of this <code>ColorPicker</code>.
+	 * Each value is between [0,max].
+	 * 
+	 */
+	public int[] getUnscaledRGB() {
+		return new int[] {
+				red.getIntValue(),
+				green.getIntValue(),
+				blue.getIntValue()
+		};
+	}
+
+	/** @return the current unscaled RGB coordinates of this <code>ColorPicker</code>, packed into a single int.
+	 * Each value is between [0,max].
+	 * 
+	 */
+	public int getUnscaledColor() {
+		return 
+				(red.getIntValue() << (bpp[1]+bpp[2])) |
+				(green.getIntValue() << bpp[2]) |
+				blue.getIntValue();
 	}
 	
 	/** Returns the currently selected opacity (a float between 0 and 1). 

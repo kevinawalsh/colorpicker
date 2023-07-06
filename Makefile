@@ -1,6 +1,6 @@
 
 DATE:=$(shell date)
-VERSION:=1.3
+VERSION:=1.4
 
 .PHONY: all
 all: jar src-jar
@@ -17,7 +17,7 @@ manifest:
 
 .PHONY: compile
 compile:
-	javac -cp ./src/ -d . ./src/com/bric/swing/ColorPicker.java
+	javac -cp ./src/ -d . ./src/com/bric/swing/*.java
 
 .PHONY: jar
 jar: compile manifest
