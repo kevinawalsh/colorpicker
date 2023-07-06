@@ -9,6 +9,7 @@ all: jar src-jar
 manifest:
 	rm -f manifest.md
 	echo "Name: ColorPicker" >> manifest.md
+	echo "Main-Class: com.bric.swing.ColorPicker" >> manifest.md
 	echo "Implementation-Build-Date: $(DATE)" >> manifest.md
 	echo "Implementation-Version: $(VERSION)" >> manifest.md
 	echo "Implementation-Vendor: Kevin Walsh" >> manifest.md
