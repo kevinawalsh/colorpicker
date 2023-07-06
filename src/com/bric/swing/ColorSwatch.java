@@ -29,8 +29,9 @@ import java.awt.image.*;
  * color and then quickly print it off, and then mix her paints to match
  * that shade.)
  * 
- * @version 1.0
+ * @version 1.3
  * @author Jeremy Wood
+ * @author Kevin Walsh
  */
 public class ColorSwatch extends JPanel {
 	private static final long serialVersionUID = 1L;

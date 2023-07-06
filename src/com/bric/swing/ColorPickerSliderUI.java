@@ -26,8 +26,9 @@ import java.awt.image.*;
 /** This is a non-public SliderUI designed specifically for the
  * <code>ColorPicker</code>.
  * 
- * @version 1.1
+ * @version 1.3
  * @author Jeremy Wood
+ * @author Kevin Walsh
  */
 class ColorPickerSliderUI extends BasicSliderUI {
 	ColorPicker colorPicker;
@@ -89,38 +90,42 @@ class ColorPickerSliderUI extends BasicSliderUI {
 			float[] hsb = colorPicker.getHSB();
 			if(mode==ColorPicker.HUE) {
 				for(int y = 0; y<trackRect.height; y++) {
-					float hue = ((float)y)/((float)trackRect.height);
+					float hue = ((float)y)/((float)(trackRect.height-1));
 					intArray[y] = Color.HSBtoRGB( hue, 1, 1);
 				}
 			} else if(mode==ColorPicker.SAT) {
 				for(int y = 0; y<trackRect.height; y++) {
-					float sat = 1-((float)y)/((float)trackRect.height);
+					float sat = 1-((float)y)/((float)(trackRect.height-1));
 					intArray[y] = Color.HSBtoRGB( hsb[0], sat, hsb[2]);
 				}
 			} else {
 				for(int y = 0; y<trackRect.height; y++) {
-					float bri = 1-((float)y)/((float)trackRect.height);
+					float bri = 1-((float)y)/((float)(trackRect.height-1));
 					intArray[y] = Color.HSBtoRGB( hsb[0], hsb[1], bri);
 				}
 			}
 		} else {
-			int[] rgb = colorPicker.getRGB();
+			int[] rgb = colorPicker.getScaledRGB();
+			int H = trackRect.height;
 			if(mode==ColorPicker.RED) {
-				for(int y = 0; y<trackRect.height; y++) {
-					int red = 255-(int)(y*255/trackRect.height+.49);
+				for(int y = 0; y<H; y++) {
+					int red = 255-(y*256/H);
 					intArray[y] = (red << 16)+(rgb[1] << 8)+(rgb[2]);
 				}
 			} else if(mode==ColorPicker.GREEN) {
-				for(int y = 0; y<trackRect.height; y++) {
-					int green = 255-(int)(y*255/trackRect.height+.49);
+				for(int y = 0; y<H; y++) {
+					int green = 255-(y*256/H);
 					intArray[y] = (rgb[0] << 16)+(green << 8)+(rgb[2]);
 				}
 			} else if(mode==ColorPicker.BLUE) {
-				for(int y = 0; y<trackRect.height; y++) {
-					int blue = 255-(int)(y*255/trackRect.height+.49);
+				for(int y = 0; y<H; y++) {
+					int blue = 255-(y*256/H);
 					intArray[y] = (rgb[0] << 16)+(rgb[1] << 8)+(blue);
 				}
 			}
+		}
+		for(int y = 0; y<trackRect.height; y++) {
+			intArray[y] = colorPicker.quantizeRGB(intArray[y]);
 		}
 		Graphics2D g2 = (Graphics2D)g;
 		Rectangle r = new Rectangle(6, trackRect.y, 14, trackRect.height);

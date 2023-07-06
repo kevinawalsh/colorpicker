@@ -48,18 +48,18 @@ class ColorPickerDialog extends JDialog {
 		}
 	};
 	
-	public ColorPickerDialog(Frame owner, Color color,boolean includeOpacity) {
+	public ColorPickerDialog(Frame owner,Color color,String depth,boolean includeOpacity) {
 		super(owner);
-		initialize(owner,color,includeOpacity);
+		initialize(owner,color,depth,includeOpacity);
 	}
 
-	public ColorPickerDialog(Dialog owner, Color color,boolean includeOpacity) {
+	public ColorPickerDialog(Dialog owner,Color color,String depth,boolean includeOpacity) {
 		super(owner);
-		initialize(owner,color,includeOpacity);
+		initialize(owner,color,depth,includeOpacity);
 	}
 	
-	private void initialize(Component owner,Color color,boolean includeOpacity) {
-		cp = new ColorPicker(true,includeOpacity);
+	private void initialize(Component owner,Color color,String depth,boolean includeOpacity) {
+		cp = new ColorPicker(depth,true,includeOpacity);
 		setModal(true);
 		setResizable(false);
 		getContentPane().setLayout(new GridBagLayout());
@@ -79,7 +79,7 @@ class ColorPickerDialog extends JDialog {
 		cp.setOpacity( ((float)color.getAlpha())/255f );
 		alpha = color.getAlpha();
 		pack();
-        setLocationRelativeTo(owner);
+		setLocationRelativeTo(owner);
 		
 		ok.addActionListener(buttonListener);
 		cancel.addActionListener(buttonListener);

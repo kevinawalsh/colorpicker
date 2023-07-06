@@ -45,26 +45,41 @@ import javax.swing.event.*;
  * <P>To listen to opacity changes to this panel, use a <code>PropertyChangeListener</code> listening
  * for changes to the <code>OPACITY_PROPERTY</code>.
  * 
- * @version 1.2
+ * @version 1.3
  * @author Jeremy Wood
+ * @author Kevin Walsh
  */
 public class ColorPicker extends JPanel {
 	private static final long serialVersionUID = 3L;
 	
 	/** The localized strings used in this (and related) panel(s). */
 	protected static ResourceBundle strings = ResourceBundle.getBundle("resources.bric.ColorPicker");
+
+	static final int[] MULTIPLIERS = new int[] {
+		0,      // invalid bpp
+				0xff00, // bpp 1, multiplier produces 11111111_00000000
+				0x5500, // bpp 2, multiplier produces 12121212_00000000
+				0x2480, // bpp 3, multiplier produces 12312312_30000000
+				0x1100, // bpp 4, multiplier produces 12341234_00000000
+				0x0840, // bpp 5, multiplier produces 12345123_45000000
+				0x0410, // bpp 6, multiplier produces 12345612_34560000
+				0x0204, // bpp 7, multiplier produces 12345671_23456700
+				0x0100  // bpp 8, multiplier produces 12345678_00000000
+	};
 	
 	/** This demonstrates how to customize a small <code>ColorPicker</code> component.
 	 */
 	public static void main(String[] args) {
+		final String depth = args.length == 0 ? "888" : args[0];
+
 		final JFrame demo = new JFrame("Demo");
 		final JWindow palette = new JWindow(demo);
-		final ColorPicker picker = new ColorPicker(true,false);
+		final ColorPicker picker = new ColorPicker(depth, true,false);
 		
 		final JComboBox comboBox = new JComboBox();
 		final JCheckBox alphaCheckbox = new JCheckBox("Include Alpha");
-		final JCheckBox hsbCheckbox = new JCheckBox("Include HSB Values");
-		final JCheckBox rgbCheckbox = new JCheckBox("Include RGB Values");
+		final JCheckBox hsbCheckbox = new JCheckBox("Include HSB Values",true);
+		final JCheckBox rgbCheckbox = new JCheckBox("Include RGB Values",true);
 		final JCheckBox modeCheckbox = new JCheckBox("Include Mode Controls",true);
 		final JButton button = new JButton("Show Dialog");
 		
@@ -116,10 +131,11 @@ public class ColorPicker extends JPanel {
 			}
 		};
 		picker.setOpacityVisible(false);
-		picker.setHSBControlsVisible(false);
-		picker.setRGBControlsVisible(false);
+		picker.setHSBControlsVisible(true);
+		picker.setRGBControlsVisible(true);
 		picker.setHexControlsVisible(false);
 		picker.setPreviewSwatchVisible(false);
+		picker.setColor(Color.WHITE);
 		
 		picker.addPropertyChangeListener(MODE_PROPERTY, new PropertyChangeListener() {
 			public void propertyChange(PropertyChangeEvent evt) {
@@ -147,7 +163,7 @@ public class ColorPicker extends JPanel {
 		button.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				Color color = picker.getColor();
-				color = ColorPicker.showDialog(demo, color, true);
+				color = ColorPicker.showDialog(demo, color, depth, alphaCheckbox.isSelected());
 				if(color!=null)
 					picker.setColor(color);
 			}
@@ -190,16 +206,16 @@ public class ColorPicker extends JPanel {
 		demo.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
-        public static Color showDialog (Container owner, Color originalColor) {
-            if (owner instanceof Window) {
-                return showDialog ((Window) owner, originalColor);
-            } else {
-                Logger.getLogger(ColorPicker.class.getName()).log (Level.SEVERE,
-                        "Not a Window subclass: " + owner);
-                Toolkit.getDefaultToolkit().beep();
-            }
-            return null;
-        }
+	public static Color showDialog (Container owner, Color originalColor) {
+		if (owner instanceof Window) {
+			return showDialog ((Window) owner, originalColor);
+		} else {
+			Logger.getLogger(ColorPicker.class.getName()).log (Level.SEVERE,
+					"Not a Window subclass: " + owner);
+			Toolkit.getDefaultToolkit().beep();
+		}
+		return null;
+	}
 	
 	/** This creates a modal dialog prompting the user to select a color.
 	 * <P>This uses a generic dialog title: "Choose a Color", and does not include opacity.
@@ -211,7 +227,7 @@ public class ColorPicker extends JPanel {
 	 * @return the <code>Color</code> the user chooses, or <code>null</code> if the user cancels the dialog.
 	 */
 	public static Color showDialog(Window owner,Color originalColor) {
-		return showDialog(owner, null, originalColor, false );
+		return showDialog(owner, null, originalColor, "888", false );
 	}
 	
 	/** This creates a modal dialog prompting the user to select a color.
@@ -225,7 +241,10 @@ public class ColorPicker extends JPanel {
 	 * @return the <code>Color</code> the user chooses, or <code>null</code> if the user cancels the dialog.
 	 */
 	public static Color showDialog(Window owner,Color originalColor,boolean includeOpacity) {
-		return showDialog(owner, null, originalColor, includeOpacity );
+		return showDialog(owner, null, originalColor, "888", includeOpacity );
+	}
+	public static Color showDialog(Window owner,Color originalColor,String depth,boolean includeOpacity) {
+		return showDialog(owner, null, originalColor, depth, includeOpacity );
 	}
 
 	/** This creates a modal dialog prompting the user to select a color.
@@ -238,19 +257,19 @@ public class ColorPicker extends JPanel {
 	 * @param includeOpacity whether to add a control for the opacity of the color.
 	 * @return the <code>Color</code> the user chooses, or <code>null</code> if the user cancels the dialog.
 	 */
-	public static Color showDialog(Window owner, String title,Color originalColor,boolean includeOpacity) {
+	public static Color showDialog(Window owner, String title, Color originalColor, String depth, boolean includeOpacity) {
 		ColorPickerDialog d;
 		if(owner instanceof Frame || owner==null) {
-			d = new ColorPickerDialog( (Frame)owner, originalColor, includeOpacity);
+			d = new ColorPickerDialog( (Frame)owner, originalColor, depth, includeOpacity);
 		} else if(owner instanceof Dialog){
-			d = new ColorPickerDialog( (Dialog)owner, originalColor, includeOpacity);
+			d = new ColorPickerDialog( (Dialog)owner, originalColor, depth, includeOpacity);
 		} else {
 			throw new IllegalArgumentException("the owner ("+owner.getClass().getName()+") must be a java.awt.Frame or a java.awt.Dialog");
 		}
 		
 		d.setTitle(title == null ? 
-                    strings.getObject("ColorPickerDialogTitle").toString() : 
-                    title);
+				strings.getObject("ColorPickerDialogTitle").toString() : 
+				title);
 		d.pack();
 		d.setVisible(true);
 		return d.getColor();
@@ -312,9 +331,9 @@ public class ColorPicker extends JPanel {
 				if(adjustingSpinners>0)
 					return;
 				
-				setRGB( red.getIntValue(),
-						green.getIntValue(),
-						blue.getIntValue() );
+				setRGB( scaleRed(red.getIntValue()),
+						scaleGreen(green.getIntValue()),
+						scaleBlue(blue.getIntValue()) );
 			} else if(src==colorPanel) {
 				if(adjustingColorPanel>0)
 					return;
@@ -449,11 +468,14 @@ public class ColorPicker extends JPanel {
 			
 			String s = hexField.getText();
 			s = stripToHex(s);
-			if(s.length()==6) {
+			if(s.length()==((bpp[0]+bpp[1]+bpp[2]+3)/4)) {
 				//the user typed 6 digits: we can work with this:
 				try {
 					int i = Integer.parseInt(s,16);
-					setRGB( ((i >> 16) & 0xff), ((i >> 8) & 0xff), ((i) & 0xff) );
+					int r = scaleRed((i >> (bpp[1]+bpp[2])) & max[0]);
+					int g = scaleGreen((i >> bpp[2]) & max[1]);
+					int b = scaleBlue(i & max[2]);
+					setRGB(r, g, b);
 					return;
 				} catch(NumberFormatException e2) {
 					//this shouldn't happen, since we already stripped out non-hex characters.
@@ -491,13 +513,17 @@ public class ColorPicker extends JPanel {
 		}
 	};
 
-	private Option alpha = new Option(strings.getObject("alphaLabel").toString(), 255);
-	private Option hue = new Option(strings.getObject("hueLabel").toString(), 360);
-	private Option sat = new Option(strings.getObject("saturationLabel").toString(), 100);
-	private Option bri = new Option(strings.getObject("brightnessLabel").toString(), 100);
-	private Option red = new Option(strings.getObject("redLabel").toString(), 255);
-	private Option green = new Option(strings.getObject("greenLabel").toString(), 255);
-	private Option blue = new Option(strings.getObject("blueLabel").toString(), 255);
+	private String depth;
+	int[] bpp = new int[] { 8, 8, 8 };
+	int[] max = new int[] { 255, 255, 255 };;
+	private int[] multiplier = new int[] { 0x100, 0x100, 0x100 };
+	private Option alpha = new Option(strings.getObject("alphaLabel").toString(), 255, 5);
+	private Option hue = new Option(strings.getObject("hueLabel").toString(), 360, 5);
+	private Option sat = new Option(strings.getObject("saturationLabel").toString(), 100, 5);
+	private Option bri = new Option(strings.getObject("brightnessLabel").toString(), 100, 5);
+	private Option red;
+	private Option green;
+	private Option blue;
 	private ColorSwatch preview = new ColorSwatch(50);
 	private JLabel hexLabel = new JLabel(strings.getObject("hexLabel").toString());
 	private JTextField hexField = new JTextField("000000");
@@ -542,15 +568,43 @@ public class ColorPicker extends JPanel {
 	 */
 	private JPanel expertControls = new JPanel(new GridBagLayout());
 	
-	private ColorPickerPanel colorPanel = new ColorPickerPanel();
+	private ColorPickerPanel colorPanel;
 	
 	private JSlider opacitySlider = new JSlider(0,255,255);
 	private JLabel opacityLabel = new JLabel(strings.getObject("opacityLabel").toString());
 	
 	/** Create a new <code>ColorPicker</code> with all controls visible except opacity. */
 	public ColorPicker() {
-		this(true,false);
+		this("888",true,false);
 	}
+
+	public static final String DEPTH_8BPP = "8";
+	public static final String DEPTH_7BPP = "7";
+	public static final String DEPTH_6BPP = "6";
+	public static final String DEPTH_5BPP = "5";
+	public static final String DEPTH_4BPP = "4";
+	public static final String DEPTH_3BPP = "3";
+	public static final String DEPTH_2BPP = "2";
+	public static final String DEPTH_1BPP = "1";
+
+	private static int parseDepth(char c) {
+		int d = "012345678".indexOf(c);
+		if (d <= 0)
+			throw new IllegalArgumentException("The channel depth ("+c+") must be in [1, 8].");
+		return d;
+	}
+
+	private static final int STEPSIZE[] = new int[] {
+		0, // invalid bpp
+		1, // bpp 1, range [0, 1]
+		1, // bpp 2, range [0, 3]
+		1, // bpp 3, range [0, 7]
+		1, // bpp 4, range [0, 15]
+		1, // bpp 5, range [0, 31]
+		3, // bpp 6, range [0, 63]
+		1, // bpp 7, range [0, 127]
+		5  // bpp 8, range [0, 255]
+	};
 	
 	/** Create a new <code>ColorPicker</code>.
 	 * 
@@ -559,10 +613,33 @@ public class ColorPicker extends JPanel {
 	 * are shown or not.
 	 * <P>It may be that your users will never need or want numeric control when
 	 * they choose their colors, so hiding this may simplify your interface.
+	 * @param depth is one of the depth values, or a string of 3 depths for R, G, and B
 	 * @param includeOpacity whether the opacity controls will be shown
 	 */
-	public ColorPicker(boolean showExpertControls,boolean includeOpacity) {
+	public ColorPicker(String depth, boolean showExpertControls,boolean includeOpacity) {
 		super(new GridBagLayout());
+	
+		this.depth = depth;
+		if (depth.length() == 3) {
+			bpp[0] = parseDepth(depth.charAt(0));
+			bpp[1] = parseDepth(depth.charAt(1));
+			bpp[2] = parseDepth(depth.charAt(2));
+		} else if (depth.length() == 1) {
+			bpp[0] = bpp[1] = bpp[2] = parseDepth(depth.charAt(0));
+		} else {
+			throw new IllegalArgumentException("The depth ("+depth+") must be one or three depth values.");
+		}
+		for (int i = 0; i < 3; i++) {
+			max[i] = (1 << bpp[i]) - 1;
+			multiplier[i] = MULTIPLIERS[bpp[i]];
+		}
+		
+		red = new Option(strings.getObject("redLabel").toString(), max[0], STEPSIZE[bpp[0]]);
+		green = new Option(strings.getObject("greenLabel").toString(), max[1], STEPSIZE[bpp[1]]);
+		blue = new Option(strings.getObject("blueLabel").toString(), max[2], STEPSIZE[bpp[2]]);
+
+		colorPanel = new ColorPickerPanel(this);
+
 		GridBagConstraints c = new GridBagConstraints();
 		
 		Insets normalInsets = new Insets(3,3,3,3);
@@ -711,11 +788,11 @@ public class ColorPicker extends JPanel {
 	 * Each value is between [0,255].
 	 * 
 	 */
-	public int[] getRGB() {
+	public int[] getScaledRGB() {
 		return new int[] {
-				red.getIntValue(),
-				green.getIntValue(),
-				blue.getIntValue()
+				scaleRed(red.getIntValue()),
+				scaleGreen(green.getIntValue()),
+				scaleBlue(blue.getIntValue())
 		};
 	}
 	
@@ -740,9 +817,9 @@ public class ColorPicker extends JPanel {
 		try {
 			int i = (int)(255*v);
 			opacitySlider.setValue( i );
-			alpha.spinner.setValue( new Integer(i) );
+			alpha.spinner.setValue( Integer.valueOf(i) );
 			if(lastOpacity!=v) {
-				firePropertyChange(OPACITY_PROPERTY,new Float(lastOpacity),new Float(i));
+				firePropertyChange(OPACITY_PROPERTY,Float.valueOf(lastOpacity),Float.valueOf(i));
 				Color c = preview.getForeground();
 				preview.setForeground(new Color(c.getRed(), c.getGreen(), c.getBlue(), i));
 			}
@@ -761,7 +838,7 @@ public class ColorPicker extends JPanel {
 	public void setMode(int mode) {
 		if(!(mode==HUE || mode==SAT || mode==BRI || mode==RED || mode==GREEN || mode==BLUE))
 			throw new IllegalArgumentException("mode must be HUE, SAT, BRI, REd, GREEN, or BLUE");
-		putClientProperty(MODE_PROPERTY,new Integer(mode));
+		putClientProperty(MODE_PROPERTY,Integer.valueOf(mode));
 		hue.radioButton.setSelected(mode==HUE);
 		sat.radioButton.setSelected(mode==SAT);
 		bri.radioButton.setSelected(mode==BRI);
@@ -775,8 +852,7 @@ public class ColorPicker extends JPanel {
 			slider.setValue(0);
 			Option option = getSelectedOption();
 			slider.setInverted(mode==HUE);
-			int max = option.getMaximum();
-			slider.setMaximum(max);
+			slider.setMaximum(option.getMaximum());
 			slider.setValue( option.getIntValue() );
 			slider.repaint();
 			
@@ -785,9 +861,9 @@ public class ColorPicker extends JPanel {
 						sat.getFloatValue()/100f,
 						bri.getFloatValue()/100f );
 			} else {
-				setRGB( red.getIntValue(),
-						green.getIntValue(),
-						blue.getIntValue() );
+				setRGB( scaleRed(red.getIntValue()),
+						scaleGreen(green.getIntValue()),
+						scaleBlue(blue.getIntValue()) );
 				
 			}
 		} finally {
@@ -809,7 +885,7 @@ public class ColorPicker extends JPanel {
 		red.radioButton.setVisible(b && red.isVisible());
 		green.radioButton.setVisible(b && green.isVisible());
 		blue.radioButton.setVisible(b && blue.isVisible());
-		putClientProperty(MODE_CONTROLS_VISIBLE_PROPERTY,new Boolean(b));
+		putClientProperty(MODE_CONTROLS_VISIBLE_PROPERTY,Boolean.valueOf(b));
 	}
 	
 	/** @return the current mode of this <code>ColorPicker</code>.
@@ -833,6 +909,26 @@ public class ColorPicker extends JPanel {
 		float opacity = ((float)c.getAlpha())/255f;
 		setOpacity(opacity);
 	}
+
+	// pre: v is in [0, max]
+	// post: result is in [0, 255]
+	private int scaleRed(int v) { return (v * multiplier[0]) >> 8; }
+	private int scaleGreen(int v) { return (v * multiplier[1]) >> 8; }
+	private int scaleBlue(int v) { return (v * multiplier[2]) >> 8; }
+
+	// pre: v is in [0, 255]
+	// post: result is scale(x) close to v, for some x
+	int quantizeRed(int v) { return scaleRed(v >> (8-bpp[0])); }
+	int quantizeGreen(int v) { return scaleGreen(v >> (8-bpp[1])); }
+	int quantizeBlue(int v) { return scaleBlue(v >> (8-bpp[2])); }
+
+	int quantizeRGB(int v) {
+		int a = (v >> 24) & 0xff;
+		int r = quantizeRed((v >> 16) & 0xff);
+		int g = quantizeGreen((v >> 8) & 0xff);
+		int b = quantizeBlue(v & 0xff);
+		return (a << 24) | (r << 16) | (g << 8) | (b);
+	}
 	
 	/** Sets the current color of this <code>ColorPicker</code>
 	 * 
@@ -847,6 +943,10 @@ public class ColorPicker extends JPanel {
 			throw new IllegalArgumentException("The green value ("+g+") must be between [0,255].");
 		if(b<0 || b>255)
 			throw new IllegalArgumentException("The blue value ("+b+") must be between [0,255].");
+
+		r = quantizeRed(r);
+		g = quantizeGreen(g);
+		b = quantizeBlue(b);
 		
 		Color lastColor = getColor();
 		
@@ -857,9 +957,9 @@ public class ColorPicker extends JPanel {
 		int alpha = this.alpha.getIntValue();
 		try {
 			if(updateRGBSpinners) {
-				red.setValue(r);
-				green.setValue(g);
-				blue.setValue(b);
+				red.setValue(r >> (8-bpp[0]));
+				green.setValue(g >> (8-bpp[1]));
+				blue.setValue(b >> (8-bpp[2]));
 			}
 			preview.setForeground(new Color(r,g,b, alpha));
 			float[] hsb = new float[3];
@@ -885,7 +985,7 @@ public class ColorPicker extends JPanel {
 	 * <BR><code>return new Color(i[0], i[1], i[2], opacitySlider.getValue());</code>
 	 */
 	public Color getColor() {
-		int[] i = getRGB();
+		int[] i = getScaledRGB();
 		return new Color(i[0], i[1], i[2], opacitySlider.getValue());
 	}
 	
@@ -997,11 +1097,13 @@ public class ColorPicker extends JPanel {
 			
 			Color c = new Color(Color.HSBtoRGB(h, s, b));
 			int alpha = this.alpha.getIntValue();
-			c = new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+			c = new Color(quantizeRed(c.getRed()),
+					quantizeGreen(c.getGreen()),
+					quantizeBlue(c.getBlue()), alpha);
 			preview.setForeground(c);
-			red.setValue(c.getRed());
-			green.setValue(c.getGreen());
-			blue.setValue(c.getBlue());
+			red.setValue(c.getRed() >> (8-bpp[0]));
+			green.setValue(c.getGreen() >> (8-bpp[1]));
+			blue.setValue(c.getBlue() >> (8-bpp[2]));
 			colorPanel.setHSB(h, s, b);
 			updateHexField();
 			updateSlider();
@@ -1022,9 +1124,9 @@ public class ColorPicker extends JPanel {
 			int g = green.getIntValue();
 			int b = blue.getIntValue();
 			
-			int i = (r << 16) + (g << 8) +b;
+			int i = (r << (bpp[1]+bpp[2])) + (g << bpp[2]) +b;
 			String s = Integer.toHexString(i).toUpperCase();
-			while(s.length()<6)
+			while(s.length()<((bpp[0]+bpp[1]+bpp[2]+3)/4))
 				s = "0"+s;
 			if(hexField.getText().equalsIgnoreCase(s)==false)
 				hexField.setText(s);
@@ -1038,8 +1140,8 @@ public class ColorPicker extends JPanel {
 		JSpinner spinner;
 		JSlider slider;
 		JLabel label;
-		public Option(String text,int max) {
-			spinner = new JSpinner(new SpinnerNumberModel(0,0,max,5));
+		public Option(String text,int max,int step) {
+			spinner = new JSpinner(new SpinnerNumberModel(0,0,max,step));
 			spinner.addChangeListener(changeListener);
 			
 			/*this tries out Tim Boudreaux's new slider UI.
@@ -1066,7 +1168,7 @@ public class ColorPicker extends JPanel {
 				slider.setValue(i);
 			}
 			if(spinner!=null) {
-				spinner.setValue(new Integer(i));
+				spinner.setValue(Integer.valueOf(i));
 			}
 		}
 		

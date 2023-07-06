@@ -19,8 +19,9 @@ import javax.swing.*;
 
 /** Some static methods for some common painting functions.
  *
- * @version 1.0
+ * @version 1.3
  * @author Jeremy Wood
+ * @author Kevin Walsh
  **/
 public class PaintUtils {
 

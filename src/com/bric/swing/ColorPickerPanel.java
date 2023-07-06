@@ -44,8 +44,9 @@ import com.bric.awt.*;
  * <P>The graphic in this panel will be based on either the width or
  * the height of this component: depending on which is smaller.
  *
- * @version 1.0
+ * @version 1.3
  * @author Jeremy Wood
+ * @author Kevin Walsh
  */
 public class ColorPickerPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -181,9 +182,11 @@ public class ColorPickerPanel extends JPanel {
 	};
 	
 	BufferedImage image = new BufferedImage(MAX_SIZE, MAX_SIZE, BufferedImage.TYPE_INT_ARGB);
+	ColorPicker colorPicker;
 	
 	/** Creates a new <code>ColorPickerPanel</code> */
-	public ColorPickerPanel() {
+	public ColorPickerPanel(ColorPicker cp) {
+		colorPicker = cp;
 		setMaximumSize(new Dimension(MAX_SIZE+imagePadding.left+imagePadding.right, 
 				MAX_SIZE+imagePadding.top+imagePadding.bottom));
 		setPreferredSize(new Dimension( (int)(MAX_SIZE*.75), (int)(MAX_SIZE*.75)));
@@ -393,6 +396,14 @@ public class ColorPickerPanel extends JPanel {
 			throw new IllegalArgumentException("The saturation value ("+s+") must be between [0,1]");
 		if(b<0 || b>1)
 			throw new IllegalArgumentException("The brightness value ("+b+") must be between [0,1]");
+
+		// hsb quantize
+		// int rgb = colorPicker.quantizeRGB(Color.HSBtoRGB(h, s, b));
+		// float[] hsb = new float[3];
+		// Color.RGBtoHSB((rgb>>16)&0xff, (rgb>>8)&0xff, (rgb&0xff), hsb);
+		// h = hsb[0];
+		// s = hsb[1];
+		// b = hsb[2];
 		
 		if(hue!=h || sat!=s || bri!=b) {
 			if(mode==ColorPicker.HUE || 
@@ -426,9 +437,9 @@ public class ColorPickerPanel extends JPanel {
 			
 
 			Color c = new Color(Color.HSBtoRGB(hue, sat, bri));
-			red = c.getRed();
-			green = c.getGreen();
-			blue = c.getBlue();
+			red = colorPicker.quantizeRed(c.getRed());
+			green = colorPicker.quantizeGreen(c.getGreen());
+			blue = colorPicker.quantizeBlue(c.getBlue());
 			
 			regeneratePoint();
 			repaint();
@@ -454,15 +465,20 @@ public class ColorPickerPanel extends JPanel {
 				double r = sat*size/2;
 				point = new Point((int)(r*Math.cos(theta)+.5+size/2.0),(int)(r*Math.sin(theta)+.5+size/2.0));
 			}
-		} else if(mode==ColorPicker.RED) {
-			point = new Point((int)(green*size/255f+.49f),
-					(int)(blue*size/255f+.49f) );
-		} else if(mode==ColorPicker.GREEN) {
-			point = new Point((int)(red*size/255f+.49f),
-					(int)(blue*size/255f+.49f) );
-		} else if(mode==ColorPicker.BLUE) {
-			point = new Point((int)(red*size/255f+.49f),
-					(int)(green*size/255f+.49f) );
+		} else {
+			// quantize to nearest
+			int[] max = colorPicker.max;
+			int[] bpp = colorPicker.bpp;
+			int r = red >> (8 - bpp[0]);
+			int g = green >> (8 - bpp[1]);
+			int b = blue >> (8 - bpp[2]);
+			if(mode==ColorPicker.RED) {
+				point = new Point((2*g+1)*size/(max[1]+1)/2, (2*b+1)*size/(max[2]+1)/2);
+			} else if(mode==ColorPicker.GREEN) {
+				point = new Point((2*r+1)*size/(max[0]+1)/2, (2*b+1)*size/(max[2]+1)/2);
+			} else if(mode==ColorPicker.BLUE) {
+				point = new Point((2*r+1)*size/(max[0]+1)/2, (2*g+1)*size/(max[1]+1)/2);
+			}
 		}
 	}
 	
@@ -495,6 +511,7 @@ public class ColorPickerPanel extends JPanel {
 							bri2 = (float)(r/radius);
 						}
 						row[x] = Color.HSBtoRGB(hue2, sat2, bri2);
+						row[x] = colorPicker.quantizeRGB(row[x]);
 						if(r>radius-k) {
 							int alpha = (int)(255-255*(r-radius+k)/k);
 							if(alpha<0) alpha = 0;
@@ -510,10 +527,11 @@ public class ColorPickerPanel extends JPanel {
 		} else if(mode==ColorPicker.HUE) {
 			float hue2 = this.hue;
 			for(int y = 0; y<size; y++) {
-				float y2 = ((float)y)/((float)size);
+				float y2 = ((float)y)/((float)(size-1));
 				for(int x = 0; x<size; x++) {
-					float x2 = ((float)x)/((float)size);
+					float x2 = ((float)x)/((float)(size-1));
 					row[x] = Color.HSBtoRGB(hue2, x2, y2);
+					row[x] = colorPicker.quantizeRGB(row[x]);
 				}
 				image.getRaster().setDataElements(0, y, image.getWidth(), 1, row);
 			}
@@ -522,18 +540,18 @@ public class ColorPickerPanel extends JPanel {
 			int green2 = green;
 			int blue2 = blue;
 			for(int y = 0; y<size; y++) {
-				float y2 = ((float)y)/((float)size);
+				// float y2 = ((float)y)/((float)(size-1));
 				for(int x = 0; x<size; x++) {
-					float x2 = ((float)x)/((float)size);
+					// float x2 = ((float)x)/((float)(size-1));
 					if(mode==ColorPicker.RED) {
-						green2 = (int)(x2*255+.49);
-						blue2 = (int)(y2*255+.49);
+						green2 = colorPicker.quantizeGreen((x*256/size));
+						blue2 = colorPicker.quantizeBlue((y*256/size));
 					} else if(mode==ColorPicker.GREEN) {
-						red2 = (int)(x2*255+.49);
-						blue2 = (int)(y2*255+.49);
+						red2 = colorPicker.quantizeRed((x*256/size));
+						blue2 = colorPicker.quantizeBlue((y*256/size));
 					} else {
-						red2 = (int)(x2*255+.49);
-						green2 = (int)(y2*255+.49);
+						red2 = colorPicker.quantizeRed((x*256/size));
+						green2 = colorPicker.quantizeGreen((y*256/size));
 					}
 					row[x] = 0xFF000000 + (red2 << 16) + (green2 << 8) + blue2;
 				}
